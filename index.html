@@ -2,13 +2,13 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>จองห้องประชุมรันตี</title>
     
     <!-- โหลดไลบรารีปฏิทิน FullCalendar -->
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
     
-    <!-- ตกแต่งหน้าตาเว็บให้ดูสะอาดตา -->
+    <!-- ตกแต่งหน้าตาเว็บให้ดูสะอาดตาและรองรับมือถือ -->
     <style>
         body { 
             font-family: sans-serif; 
@@ -19,6 +19,7 @@
         h2 {
             text-align: center;
             color: #333;
+            font-size: 1.5rem;
         }
         #calendar { 
             max-width: 100%; 
@@ -26,6 +27,31 @@
             padding: 10px; 
             border-radius: 8px; 
             box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }
+
+        /* ปรับขนาดฟอนต์และปุ่มต่างๆ ในปฏิทินเมื่อเปิดบนหน้าจอมือถือ */
+        @media (max-width: 767px) {
+            body {
+                padding: 5px;
+            }
+            h2 {
+                font-size: 1.2rem;
+                margin-top: 10px;
+            }
+            #calendar {
+                padding: 5px;
+            }
+            .fc .fc-toolbar-title {
+                font-size: 1.1em !important;
+            }
+            .fc .fc-button {
+                padding: 0.2em 0.5em !important;
+                font-size: 0.85em !important;
+            }
+            .fc-toolbar {
+                flex-direction: column;
+                gap: 10px;
+            }
         }
     </style>
 </head>
@@ -53,18 +79,34 @@
         // 3. เริ่มต้นวาดปฏิทินเมื่อหน้าเว็บโหลดเสร็จ
         document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendar');
+            
+            // เช็คว่าหน้าจอเล็กกว่า 768px (มือถือ) หรือไม่
+            var isMobile = window.innerWidth < 768; 
+
             var calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'timeGridWeek', // แสดงผลแบบรายสัปดาห์
-                locale: 'th', // เปลี่ยนเป็นภาษาไทย
-                selectable: true, // อนุญาตให้ใช้นิ้วหรือเมาส์ลากเลือกเวลาได้
+                // ถ้าเป็นมือถือให้แสดงผลรายวัน (timeGridDay) ป้องกันคอลัมน์บีบกันเกินไป แต่ถ้าเป็นคอมฯ ให้แสดงรายสัปดาห์
+                initialView: isMobile ? 'timeGridDay' : 'timeGridWeek', 
                 
-                // 4. เมื่อผู้ใช้งานกดเลือกช่วงเวลา ให้ทำงานในส่วนนี้
+                // เพิ่มปุ่มเมนูให้สามารถสลับมุมมองได้
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: isMobile ? 'timeGridDay,listWeek' : 'timeGridWeek,timeGridDay,listWeek'
+                },
+                
+                locale: 'th', // เปลี่ยนเป็นภาษาไทย
+                selectable: true, // อนุญาตให้ใช้นิ้วหรือเมาส์ลากเลือกเวลาได้[cite: 1]
+                
+                // การตั้งค่าเพิ่มเติมสำหรับหน้าจอมือถือ
+                height: 'auto', // ปรับความสูงอัตโนมัติตามเนื้อหา ป้องกันการเลื่อนซ้อนกันบนมือถือ
+                selectLongPressDelay: 250, // เพิ่มความหน่วงเวลาใช้นิ้วกดค้างเพื่อลากจอง (ช่วยลดปัญหาแตะพลาดเวลาเลื่อนจอ)
+                windowResizeDelay: 100, // อัปเดตขนาดปฏิทินทันทีเมื่อหมุนจอ
+                
+                // 4. เมื่อผู้ใช้งานกดเลือกช่วงเวลา ให้ทำงานในส่วนนี้[cite: 1]
                 select: function(info) {
-                    // สร้างกล่องข้อความถามยืนยันการจอง
                     let confirmBooking = confirm("คุณต้องการจองห้องเวลานี้ใช่หรือไม่?\nจาก: " + info.startStr + "\nถึง: " + info.endStr);
                     
                     if (confirmBooking) {
-                        // ส่งข้อมูล วัน-เวลา ไปให้ n8n ประมวลผลผ่าน Webhook
                         fetch(N8N_WEBHOOK_URL, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -73,27 +115,28 @@
                                 end: info.endStr
                             })
                         }).then(response => alert("ส่งคำขอจองแล้ว ระบบกำลังตรวจสอบคิว กรุณารอรับข้อความยืนยันทาง LINE ครับ!"));
+                    } else {
+                        // เคลียร์แถบไฮไลต์ออกถ้ายกเลิกการจอง
+                        calendar.unselect(); 
                     }
                 }
             });
             calendar.render();
 
-            // 5. ดึงข้อมูลคิวที่จองแล้วจาก Firebase มาแสดงบนปฏิทินแบบ Real-time
+            // 5. ดึงข้อมูลคิวที่จองแล้วจาก Firebase มาแสดงบนปฏิทินแบบ Real-time[cite: 1]
             const bookingsRef = ref(db, 'bookings');
             onValue(bookingsRef, (snapshot) => {
                 const data = snapshot.val();
                 
-                // ล้างข้อมูลคิวเก่าบนหน้าจอออกก่อน
                 calendar.removeAllEvents(); 
                 
-                // วนลูปวาดกล่องคิวใหม่ทับลงไป
                 for (let key in data) {
                     calendar.addEvent({
                         id: data[key].id,
                         title: data[key].title, 
                         start: data[key].start,
                         end: data[key].end,
-                        color: '#ff4d4f' // ตั้งค่าสีกล่องคิวที่ถูกจองแล้วให้เป็นสีแดง
+                        color: '#ff4d4f'
                     });
                 }
             });
