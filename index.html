@@ -3,144 +3,320 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>จองห้องประชุมรันตี</title>
+    <title>ระบบจองห้องประชุม</title>
     
-    <!-- โหลดไลบรารีปฏิทิน FullCalendar -->
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
-    
-    <!-- ตกแต่งหน้าตาเว็บให้ดูสะอาดตาและรองรับมือถือ -->
-    <style>
-        body { 
-            font-family: sans-serif; 
-            padding: 10px; 
-            background-color: #f4f6f9; 
-            margin: 0;
-        }
-        h2 {
-            text-align: center;
-            color: #333;
-            font-size: 1.5rem;
-        }
-        #calendar { 
-            max-width: 100%; 
-            background: white; 
-            padding: 10px; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
-        }
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-        /* ปรับขนาดฟอนต์และปุ่มต่างๆ ในปฏิทินเมื่อเปิดบนหน้าจอมือถือ */
-        @media (max-width: 767px) {
-            body {
-                padding: 5px;
-            }
-            h2 {
-                font-size: 1.2rem;
-                margin-top: 10px;
-            }
-            #calendar {
-                padding: 5px;
-            }
-            .fc .fc-toolbar-title {
-                font-size: 1.1em !important;
-            }
-            .fc .fc-button {
-                padding: 0.2em 0.5em !important;
-                font-size: 0.85em !important;
-            }
-            .fc-toolbar {
-                flex-direction: column;
-                gap: 10px;
-            }
+    <style>
+        body { font-family: 'Prompt', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        overscroll-behavior-y: none;
+        
+        input[type="time"]::-webkit-calendar-picker-indicator,
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="month"]::-webkit-calendar-picker-indicator {
+            background: transparent; bottom: 0; color: transparent; cursor: pointer;
+            height: auto; left: 0; position: absolute; right: 0; top: 0; width: auto;
         }
+        
+        input[type="checkbox"] { accent-color: #2563eb; }
     </style>
 </head>
-<body>
-    <h2>📅 ตารางจองห้องประชุมรันตี</h2>
-    
-    <!-- พื้นที่สำหรับวาดปฏิทิน -->
-    <div id="calendar"></div>
+<body class="bg-slate-50 text-slate-800 antialiased h-screen flex flex-col">
 
-    <!-- โหลดไลบรารีฐานข้อมูล Firebase -->
+    <!-- ส่วนหัว (Header) -->
+    <header class="sticky top-0 z-40 bg-white shadow-sm px-4 h-16 flex items-center justify-between shrink-0">
+        <button class="text-slate-600 text-2xl w-12 h-12 flex items-center justify-start active:scale-95 transition-transform">
+            <i class="fas fa-bars"></i>
+        </button>
+        <h1 class="text-xl font-bold text-slate-800">ระบบจองห้องประชุม</h1>
+        <button class="text-slate-600 text-2xl w-12 h-12 flex items-center justify-end active:scale-95 transition-transform">
+            <i class="fas fa-user-circle"></i>
+        </button>
+    </header>
+
+    <!-- ส่วนเลือกเดือน (Month Picker) -->
+    <section class="bg-white border-b border-slate-200 shrink-0">
+        <div class="flex items-center justify-between px-4 py-4">
+            <button onclick="changeMonth(-1)" class="w-12 h-12 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-lg active:bg-slate-200">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            
+            <div class="text-center relative">
+                <button onclick="openMonthPicker()" class="text-xl font-bold text-blue-700 px-4 py-1 rounded-xl active:bg-blue-50">
+                    <span id="currentMonthDisplay">กำลังโหลด...</span> <i class="fas fa-caret-down ml-1 text-sm"></i>
+                </button>
+                <input type="month" id="hiddenMonthPicker" onchange="setMonthFromPicker(event)" class="absolute opacity-0 top-0 left-0 w-full h-full cursor-pointer" style="z-index: 10;">
+                <div class="text-slate-500 font-medium mt-1 text-sm bg-slate-100 inline-block px-3 py-1 rounded-full">
+                    📍 ห้องประชุมรันตี
+                </div>
+            </div>
+
+            <button onclick="changeMonth(1)" class="w-12 h-12 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-lg active:bg-slate-200">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </section>
+
+    <!-- คิวที่ถูกจองแล้ว (Timeline Container) -->
+    <main id="timelineContainer" class="flex-1 overflow-y-auto p-4 space-y-4 pb-28">
+        <div class="flex justify-between items-center mb-2 px-1">
+            <h2 class="text-slate-500 font-semibold">คิวที่ถูกจองแล้ว:</h2>
+            <span id="timelineMonth" class="text-sm font-bold text-blue-600"></span>
+        </div>
+        
+        <!-- ข้อความแสดงเมื่อไม่มีการจอง (Empty State) -->
+        <div id="emptyState" class="flex flex-col items-center justify-center py-12 text-center mt-8">
+            <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                <i class="far fa-calendar-check text-4xl text-blue-300"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-700">ยังไม่มีการจองในเดือนนี้</h3>
+            <p class="text-slate-500 text-base mt-2">กดปุ่มด้านล่างเพื่อสร้างการจองคิวแรกได้เลยครับ</p>
+        </div>
+    </main>
+
+    <!-- ปุ่มจองห้อง -->
+    <div class="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-30">
+        <button onclick="openModal()" class="w-full h-14 bg-blue-600 text-white rounded-2xl text-xl font-bold shadow-lg shadow-blue-200 active:bg-blue-700 transition-colors flex justify-center items-center">
+            <i class="fas fa-plus-circle mr-2"></i> สร้างการจองห้อง
+        </button>
+    </div>
+
+    <!-- หน้าต่างยืนยันการจอง (Bottom Sheet) -->
+    <div id="modalBackdrop" class="fixed inset-0 bg-slate-900/50 z-50 hidden opacity-0 transition-opacity duration-300" onclick="closeModal()"></div>
+    
+    <div id="bookingModal" class="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl transform translate-y-full transition-transform duration-300 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-center pt-4 pb-2" onclick="closeModal()">
+            <div class="w-12 h-1.5 bg-slate-300 rounded-full"></div>
+        </div>
+        
+        <div class="px-6 pb-8 pt-2">
+            <h2 class="text-2xl font-bold text-slate-800 mb-5">ระบุข้อมูลการจอง</h2>
+            
+            <form id="bookingForm" onsubmit="submitBooking(event)">
+                <div class="mb-5 relative">
+                    <label class="block text-slate-700 text-lg font-medium mb-2" for="bookingDate">วันที่ต้องการจอง</label>
+                    <input type="date" id="bookingDate" required class="w-full min-h-[56px] text-lg px-4 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 relative z-10">
+                </div>
+
+                <div class="flex space-x-4 mb-5">
+                    <div class="w-1/2 relative">
+                        <label class="block text-slate-700 text-lg font-medium mb-2" for="startTime">เวลาเริ่ม</label>
+                        <input type="time" id="startTime" required class="w-full h-14 text-xl px-4 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 relative z-10">
+                    </div>
+                    <div class="w-1/2 relative">
+                        <label class="block text-slate-700 text-lg font-medium mb-2" for="endTime">เวลาจบ</label>
+                        <input type="time" id="endTime" required class="w-full h-14 text-xl px-4 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 relative z-10">
+                    </div>
+                </div>
+                <p id="timeError" class="text-red-500 text-sm mb-4 hidden"><i class="fas fa-exclamation-circle"></i> เวลาจบต้องมากกว่าเวลาเริ่มครับ</p>
+
+                <div class="mb-5">
+                    <label class="block text-slate-700 text-lg font-medium mb-2" for="requesterName">ชื่อผู้ขอใช้</label>
+                    <input type="text" id="requesterName" required placeholder="เช่น ครูสมชาย ใจดี" class="w-full min-h-[56px] text-lg px-4 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-slate-700 text-lg font-medium mb-2" for="department">กลุ่มงานหรือกลุ่มสาระฯ</label>
+                    <div class="relative">
+                        <select id="department" required class="w-full min-h-[56px] text-lg px-4 appearance-none border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                            <option value="" disabled selected>-- เลือกกลุ่มสาระฯ / กลุ่มงาน --</option>
+                            <option value="วิทยาศาสตร์และเทคโนโลยี">วิทยาศาสตร์และเทคโนโลยี</option>
+                            <option value="คณิตศาสตร์">คณิตศาสตร์</option>
+                            <option value="ภาษาไทย">ภาษาไทย</option>
+                            <option value="ภาษาต่างประเทศ">ภาษาต่างประเทศ</option>
+                            <option value="สังคมศึกษาฯ">สังคมศึกษาฯ</option>
+                            <option value="สุขศึกษาและพลศึกษา">สุขศึกษาและพลศึกษา</option>
+                            <option value="ศิลปะ">ศิลปะ</option>
+                            <option value="การงานอาชีพ">การงานอาชีพ</option>
+                            <option value="กลุ่มบริหารวิชาการ">กลุ่มบริหารวิชาการ</option>
+                            <option value="กลุ่มบริหารทั่วไป">กลุ่มบริหารทั่วไป</option>
+                            <option value="อื่นๆ">อื่นๆ</option>
+                        </select>
+                        <i class="fas fa-chevron-down absolute right-4 top-5 text-slate-400 text-lg"></i>
+                    </div>
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-slate-700 text-lg font-medium mb-2" for="activityName">ชื่อกิจกรรม</label>
+                    <input type="text" id="activityName" required placeholder="เช่น อบรม, ประชุมหมวด" class="w-full min-h-[56px] text-lg px-4 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                </div>
+
+                <div class="mb-8">
+                    <label class="block text-slate-700 text-lg font-medium mb-3">อุปกรณ์ที่ต้องการใช้</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center space-x-3 bg-white border border-slate-200 p-4 rounded-xl active:bg-slate-50 transition-colors">
+                            <input type="checkbox" name="equipment" value="ใช้จอ" class="w-6 h-6 rounded border-slate-300">
+                            <span class="text-lg text-slate-700">ใช้จอ</span>
+                        </label>
+                        <label class="flex items-center space-x-3 bg-white border border-slate-200 p-4 rounded-xl active:bg-slate-50 transition-colors">
+                            <input type="checkbox" name="equipment" value="ใช้โน๊ตบุ๊ค" class="w-6 h-6 rounded border-slate-300">
+                            <span class="text-lg text-slate-700">โน๊ตบุ๊ค</span>
+                        </label>
+                        <label class="flex items-center space-x-3 bg-white border border-slate-200 p-4 rounded-xl active:bg-slate-50 transition-colors">
+                            <input type="checkbox" name="equipment" value="ใช้ไมค์" class="w-6 h-6 rounded border-slate-300">
+                            <span class="text-lg text-slate-700">ใช้ไมค์</span>
+                        </label>
+                        <label class="flex items-center space-x-3 bg-white border border-slate-200 p-4 rounded-xl active:bg-slate-50 transition-colors">
+                            <input type="checkbox" name="equipment" value="ใช้ลำโพง" class="w-6 h-6 rounded border-slate-300">
+                            <span class="text-lg text-slate-700">ใช้ลำโพง</span>
+                        </label>
+                    </div>
+                    <input type="text" id="otherDetails" placeholder="รายละเอียดเพิ่มเติมอื่นๆ (ถ้ามี)" class="w-full min-h-[56px] text-lg px-4 mt-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                </div>
+
+                <div class="flex gap-3 mt-4">
+                    <button type="button" onclick="closeModal()" class="w-1/3 min-h-[56px] bg-white border-2 border-slate-200 text-slate-600 text-lg font-bold rounded-xl active:bg-slate-50 transition-colors">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" class="w-2/3 min-h-[56px] bg-blue-600 text-white text-lg font-bold rounded-xl shadow-lg shadow-blue-200 active:bg-blue-700 transition-colors">
+                        ยืนยันการจอง
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+<!-- เปลี่ยนเป็น type="module" เพื่อให้ใช้ Firebase ได้ -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
         import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
 
-        // 1. นำลิงก์ Firebase ของคุณมาใส่ที่นี่
+        // 1. ตั้งค่าการเชื่อมต่อ Firebase (ใช้ลิงก์ของคุณครู)
         const firebaseConfig = {
             databaseURL: "https://room-runty-booking-system-default-rtdb.asia-southeast1.firebasedatabase.app"
         };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // 2. นำลิงก์ Webhook จาก n8n มาวางในเครื่องหมายคำพูดด้านล่างนี้
-        const N8N_WEBHOOK_URL = "https://ter.app.n8n.cloud/webhook-test/book-room";
+        // --- ระบบจัดการเดือนและวันที่ (เหมือนเดิม) ---
+        let currentMonthDate = new Date(); 
+        const displayElement = document.getElementById('currentMonthDisplay');
+        const timelineMonthElement = document.getElementById('timelineMonth');
+        const hiddenMonthPicker = document.getElementById('hiddenMonthPicker');
+        const thaiMonthsFull = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
 
-        // 3. เริ่มต้นวาดปฏิทินเมื่อหน้าเว็บโหลดเสร็จ
-        document.addEventListener('DOMContentLoaded', function() {
-            var calendarEl = document.getElementById('calendar');
+        function updateMonthDisplay() {
+            const monthIndex = currentMonthDate.getMonth();
+            const year = currentMonthDate.getFullYear() + 543;
+            displayElement.innerText = `${thaiMonthsFull[monthIndex]} ${year}`;
+            timelineMonthElement.innerText = `ประจำเดือน ${thaiMonthsFull[monthIndex]} ${year}`;
+            hiddenMonthPicker.value = `${currentMonthDate.getFullYear()}-${String(monthIndex + 1).padStart(2, '0')}`;
+        }
+        window.changeMonth = function(months) {
+            currentMonthDate.setMonth(currentMonthDate.getMonth() + months);
+            updateMonthDisplay();
+        };
+        window.openMonthPicker = function() { hiddenMonthPicker.showPicker(); };
+        window.setMonthFromPicker = function(event) {
+            if(event.target.value) {
+                const [yyyy, mm] = event.target.value.split('-');
+                currentMonthDate = new Date(yyyy, mm - 1, 1);
+                updateMonthDisplay();
+            }
+        };
+        updateMonthDisplay();
+
+        // --- ระบบจัดการปุ่มและหน้าต่าง Modal (เหมือนเดิม) ---
+        const modal = document.getElementById('bookingModal');
+        const backdrop = document.getElementById('modalBackdrop');
+        const bookingDateInput = document.getElementById('bookingDate');
+
+        window.openModal = function() {
+            backdrop.classList.remove('hidden');
+            setTimeout(() => backdrop.classList.remove('opacity-0'), 10);
+            modal.classList.remove('translate-y-full');
+            if (!bookingDateInput.value) {
+                const today = new Date();
+                bookingDateInput.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            }
+        };
+        window.closeModal = function() {
+            modal.classList.add('translate-y-full');
+            backdrop.classList.add('opacity-0');
+            setTimeout(() => backdrop.classList.add('hidden'), 300);
+            document.getElementById('bookingForm').reset();
+        };
+
+        // --- 2. ฟังเสียงอัปเดตจาก Firebase แบบ Real-time ---
+        const bookingsRef = ref(db, 'bookings');
+        onValue(bookingsRef, (snapshot) => {
+            const data = snapshot.val();
+            const timelineContainer = document.getElementById('timelineContainer');
+            const emptyState = document.getElementById('emptyState');
             
-            // เช็คว่าหน้าจอเล็กกว่า 768px (มือถือ) หรือไม่
-            var isMobile = window.innerWidth < 768; 
+            // ลบกล่องคิวเก่าทิ้งทั้งหมดก่อน (เหลือไว้แค่ หัวข้อ กับ Empty State)
+            const oldCards = timelineContainer.querySelectorAll('.booking-card');
+            oldCards.forEach(card => card.remove());
 
-            var calendar = new FullCalendar.Calendar(calendarEl, {
-                // ถ้าเป็นมือถือให้แสดงผลรายวัน (timeGridDay) ป้องกันคอลัมน์บีบกันเกินไป แต่ถ้าเป็นคอมฯ ให้แสดงรายสัปดาห์
-                initialView: isMobile ? 'timeGridDay' : 'timeGridWeek', 
+            if (data) {
+                emptyState.style.display = 'none'; // ซ่อนข้อความว่าไม่มีคิว
                 
-                // เพิ่มปุ่มเมนูให้สามารถสลับมุมมองได้
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: isMobile ? 'timeGridDay,listWeek' : 'timeGridWeek,timeGridDay,listWeek'
-                },
-                
-                locale: 'th', // เปลี่ยนเป็นภาษาไทย
-                selectable: true, // อนุญาตให้ใช้นิ้วหรือเมาส์ลากเลือกเวลาได้[cite: 1]
-                
-                // การตั้งค่าเพิ่มเติมสำหรับหน้าจอมือถือ
-                height: 'auto', // ปรับความสูงอัตโนมัติตามเนื้อหา ป้องกันการเลื่อนซ้อนกันบนมือถือ
-                selectLongPressDelay: 250, // เพิ่มความหน่วงเวลาใช้นิ้วกดค้างเพื่อลากจอง (ช่วยลดปัญหาแตะพลาดเวลาเลื่อนจอ)
-                windowResizeDelay: 100, // อัปเดตขนาดปฏิทินทันทีเมื่อหมุนจอ
-                
-                // 4. เมื่อผู้ใช้งานกดเลือกช่วงเวลา ให้ทำงานในส่วนนี้[cite: 1]
-                select: function(info) {
-                    let confirmBooking = confirm("คุณต้องการจองห้องเวลานี้ใช่หรือไม่?\nจาก: " + info.startStr + "\nถึง: " + info.endStr);
-                    
-                    if (confirmBooking) {
-                        fetch(N8N_WEBHOOK_URL, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                start: info.startStr,
-                                end: info.endStr
-                            })
-                        }).then(response => alert("ส่งคำขอจองแล้ว ระบบกำลังตรวจสอบคิว กรุณารอรับข้อความยืนยันทาง LINE ครับ!"));
-                    } else {
-                        // เคลียร์แถบไฮไลต์ออกถ้ายกเลิกการจอง
-                        calendar.unselect(); 
-                    }
-                }
-            });
-            calendar.render();
-
-            // 5. ดึงข้อมูลคิวที่จองแล้วจาก Firebase มาแสดงบนปฏิทินแบบ Real-time[cite: 1]
-            const bookingsRef = ref(db, 'bookings');
-            onValue(bookingsRef, (snapshot) => {
-                const data = snapshot.val();
-                
-                calendar.removeAllEvents(); 
-                
+                // วนลูปสร้างกล่องคิวใหม่จากข้อมูล Firebase
                 for (let key in data) {
-                    calendar.addEvent({
-                        id: data[key].id,
-                        title: data[key].title, 
-                        start: data[key].start,
-                        end: data[key].end,
-                        color: '#ff4d4f'
-                    });
+                    const booking = data[key];
+                    // สมมติว่า Firebase ส่ง title มาเป็น "ติวเสริมวิชาคอมพิวเตอร์"
+                    // และส่ง start มาแบบ "2026-08-12T09:00:00"
+                    let startDate = new Date(booking.start);
+                    let endDate = new Date(booking.end);
+                    
+                    let dayStr = startDate.getDate() + ' ' + ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."][startDate.getMonth()];
+                    let timeStr = String(startDate.getHours()).padStart(2,'0') + ':' + String(startDate.getMinutes()).padStart(2,'0') + ' - ' + String(endDate.getHours()).padStart(2,'0') + ':' + String(endDate.getMinutes()).padStart(2,'0');
+
+                    const newCard = document.createElement('div');
+                    newCard.className = 'booking-card w-full bg-white border border-slate-200 rounded-2xl p-4 shadow-sm relative overflow-hidden mt-4';
+                    newCard.innerHTML = `
+                        <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-red-500"></div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xl font-bold text-slate-800">${dayStr} (${timeStr})</span>
+                            <span class="bg-red-100 text-red-600 text-sm px-2 py-1 rounded-md font-bold">จองแล้ว</span>
+                        </div>
+                        <p class="text-slate-600 font-medium">${booking.title || 'ไม่ระบุกิจกรรม'}</p>
+                    `;
+                    timelineContainer.appendChild(newCard);
                 }
-            });
+            } else {
+                emptyState.style.display = 'flex'; // ถ้าไม่มีข้อมูลเลย ให้โชว์ Empty State
+            }
         });
+
+        // --- 3. ฟังก์ชันกดยืนยันการจอง (ยิง Webhook ไปหา n8n) ---
+        window.submitBooking = function(event) {
+            event.preventDefault(); 
+            
+            let selectedEquipment = [];
+            document.querySelectorAll('input[name="equipment"]:checked').forEach(cb => selectedEquipment.push(cb.value));
+            
+            const payload = {
+                room: "ห้องประชุมรันตี",
+                bookingDate: document.getElementById('bookingDate').value, 
+                startTime: document.getElementById('startTime').value,
+                endTime: document.getElementById('endTime').value,
+                requesterName: document.getElementById('requesterName').value,
+                department: document.getElementById('department').value,
+                activityName: document.getElementById('activityName').value,
+                equipment: selectedEquipment.join(', '),
+                otherDetails: document.getElementById('otherDetails').value
+            };
+
+            // !!!!!!!! นำลิงก์ n8n Production Webhook มาใส่ที่นี่ !!!!!!!!
+            const WEBHOOK_URL = "วาง_ลิงก์_WEBHOOK_ของ_n8n_ที่นี่"; 
+            
+            fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(response => {
+                alert(`ส่งคำขอจองสำเร็จแล้ว! กรุณารอสักครู่ ระบบกำลังนำข้อมูลขึ้นตารางครับ`);
+                closeModal();
+            }).catch(error => {
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
+                console.error(error);
+            });
+        };
     </script>
 </body>
 </html>
