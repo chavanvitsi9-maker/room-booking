@@ -305,17 +305,27 @@
             // !!!!!!!! นำลิงก์ n8n Production Webhook มาใส่ที่นี่ เปลี่ยนเป็น google script !!!!!!!!
             const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxrKIwlliRzwDrE1moSu8ngFQNpb6i9a4iE1AcamKCKH5Ke50c19QQz9bD9ktGjYQ054Q/exec"; 
             
-            fetch(WEBHOOK_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            }).then(response => {
-                alert(`ส่งคำขอจองสำเร็จแล้ว! กรุณารอสักครู่ ระบบกำลังนำข้อมูลขึ้นตารางครับ`);
-                closeModal();
-            }).catch(error => {
+            fetch("URL_WEBHOOK_ของ_APPS_SCRIPT_ที่คัดลอกมา", {
+              method: "POST",
+              // จุดที่ 1: ต้องหลอกเบราว์เซอร์ว่าเป็นแค่ข้อความธรรมดา (text/plain) เพื่อผ่านด่าน CORS
+              headers: {
+                "Content-Type": "text/plain;charset=utf-8", 
+              },
+              body: JSON.stringify(data),
+              // จุดที่ 2: ต้องสั่งให้เบราว์เซอร์ตามลิงก์ Redirect ของ Google ไปด้วย (สำคัญมาก)
+               redirect: "follow" 
+              })
+              .then(response => response.json())
+              .then(result => {
+                // ถ้าสำเร็จ ให้แจ้งเตือนหรือเปลี่ยนหน้า
+                console.log("จองสำเร็จ:", result);
+                alert("จองห้องสำเร็จ!");
+              })
+              .catch(error => {
+                // หากการเชื่อมต่อมีปัญหา จะวิ่งเข้าตรงนี้ (ซึ่งคือสิ่งที่คุณกำลังเจออยู่ครับ)
+                console.error("Error:", error);
                 alert("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
-                console.error(error);
-            });
+              });
         };
     </script>
 </body>
