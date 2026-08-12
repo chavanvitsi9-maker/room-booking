@@ -283,13 +283,14 @@
             }
         });
 
-        // --- 3. ฟังก์ชันกดยืนยันการจอง (ยิง Webhook ไปหา n8n) ---
+        // --- 3. ฟังก์ชันกดยืนยันการจอง (ยิง Webhook ไปหา Google Apps Script) ---
         window.submitBooking = function(event) {
             event.preventDefault(); 
             
             let selectedEquipment = [];
             document.querySelectorAll('input[name="equipment"]:checked').forEach(cb => selectedEquipment.push(cb.value));
             
+            // เก็บข้อมูลทั้งหมดไว้ในตัวแปรชื่อ payload
             const payload = {
                 room: "ห้องประชุมรันตี",
                 bookingDate: document.getElementById('bookingDate').value, 
@@ -302,27 +303,29 @@
                 otherDetails: document.getElementById('otherDetails').value
             };
 
-            // !!!!!!!! นำลิงก์ n8n Production Webhook มาใส่ที่นี่ เปลี่ยนเป็น google script !!!!!!!!
+            // ลิงก์ Webhook ของ Google Apps Script ของคุณ
             const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxrKIwlliRzwDrE1moSu8ngFQNpb6i9a4iE1AcamKCKH5Ke50c19QQz9bD9ktGjYQ054Q/exec"; 
             
-            fetch("URL_WEBHOOK_ของ_APPS_SCRIPT_ที่คัดลอกมา", {
+            // เปลี่ยนมาใช้ WEBHOOK_URL ตรงนี้
+            fetch(WEBHOOK_URL, {
               method: "POST",
-              // จุดที่ 1: ต้องหลอกเบราว์เซอร์ว่าเป็นแค่ข้อความธรรมดา (text/plain) เพื่อผ่านด่าน CORS
               headers: {
                 "Content-Type": "text/plain;charset=utf-8", 
               },
-              body: JSON.stringify(data),
-              // จุดที่ 2: ต้องสั่งให้เบราว์เซอร์ตามลิงก์ Redirect ของ Google ไปด้วย (สำคัญมาก)
-               redirect: "follow" 
+              // เปลี่ยนจาก data เป็น payload ให้ตรงกับตัวแปรด้านบน
+              body: JSON.stringify({ body: payload }), 
+              redirect: "follow" 
               })
               .then(response => response.json())
               .then(result => {
-                // ถ้าสำเร็จ ให้แจ้งเตือนหรือเปลี่ยนหน้า
-                console.log("จองสำเร็จ:", result);
-                alert("จองห้องสำเร็จ!");
+                if(result.status === "success") {
+                    alert("จองห้องสำเร็จ!");
+                    closeModal(); // ปิดหน้าต่างเมื่อจองเสร็จ
+                } else {
+                    alert("แจ้งเตือน: " + result.message);
+                }
               })
               .catch(error => {
-                // หากการเชื่อมต่อมีปัญหา จะวิ่งเข้าตรงนี้ (ซึ่งคือสิ่งที่คุณกำลังเจออยู่ครับ)
                 console.error("Error:", error);
                 alert("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
               });
