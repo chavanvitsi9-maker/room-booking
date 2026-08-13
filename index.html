@@ -102,16 +102,52 @@
                     <input type="date" id="bookingDate" required class="w-full min-h-[56px] text-lg px-4 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 relative z-10">
                 </div>
 
-                <div class="flex space-x-4 mb-5">
-                    <div class="w-1/2 relative">
-                        <label class="block text-slate-700 text-lg font-medium mb-2" for="startTime">เวลาเริ่ม</label>
-                        <input type="time" id="startTime" required class="w-full h-14 text-xl px-4 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 relative z-10">
-                    </div>
-                    <div class="w-1/2 relative">
-                        <label class="block text-slate-700 text-lg font-medium mb-2" for="endTime">เวลาจบ</label>
-                        <input type="time" id="endTime" required class="w-full h-14 text-xl px-4 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 relative z-10">
-                    </div>
-                </div>
+<div class="flex space-x-4 mb-5">
+    <div class="w-1/2 relative">
+        <label class="block text-slate-700 text-lg font-medium mb-2" for="startTime">เวลาเริ่ม</label>
+        <div class="relative">
+            <select id="startTime" required class="w-full h-14 text-xl px-4 appearance-none border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 relative z-10">
+                <option value="" disabled selected>เลือกเวลา</option>
+                <option value="08:00">08:00</option>
+                <option value="08:30">08:30</option>
+                <option value="09:00">09:00</option>
+                <option value="09:30">09:30</option>
+                <option value="10:00">10:00</option>
+                <option value="10:30">10:30</option>
+                <option value="11:00">11:00</option>
+                <option value="11:30">11:30</option>
+                <option value="12:00">12:00</option>
+                <option value="13:00">13:00</option>
+                <option value="14:00">14:00</option>
+                <option value="15:00">15:00</option>
+                <option value="16:00">16:00</option>
+            </select>
+            <i class="fas fa-chevron-down absolute right-4 top-5 text-slate-400 text-lg z-20 pointer-events-none"></i>
+        </div>
+    </div>
+    <div class="w-1/2 relative">
+        <label class="block text-slate-700 text-lg font-medium mb-2" for="endTime">เวลาจบ</label>
+        <div class="relative">
+            <select id="endTime" required class="w-full h-14 text-xl px-4 appearance-none border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 relative z-10">
+                <option value="" disabled selected>เลือกเวลา</option>
+                <option value="08:30">08:30</option>
+                <option value="09:00">09:00</option>
+                <option value="09:30">09:30</option>
+                <option value="10:00">10:00</option>
+                <option value="10:30">10:30</option>
+                <option value="11:00">11:00</option>
+                <option value="11:30">11:30</option>
+                <option value="12:00">12:00</option>
+                <option value="13:00">13:00</option>
+                <option value="14:00">14:00</option>
+                <option value="15:00">15:00</option>
+                <option value="16:00">16:00</option>
+                <option value="17:00">17:00</option>
+            </select>
+            <i class="fas fa-chevron-down absolute right-4 top-5 text-slate-400 text-lg z-20 pointer-events-none"></i>
+        </div>
+    </div>
+</div>
                 <p id="timeError" class="text-red-500 text-sm mb-4 hidden"><i class="fas fa-exclamation-circle"></i> เวลาจบต้องมากกว่าเวลาเริ่มครับ</p>
 
                 <div class="mb-5">
