@@ -172,7 +172,7 @@
                     <button type="button" onclick="closeModal()" class="w-1/3 min-h-[56px] bg-white border-2 border-slate-200 text-slate-600 text-lg font-bold rounded-xl active:bg-slate-50 transition-colors">
                         ยกเลิก
                     </button>
-                    <button type="submit" class="w-2/3 min-h-[56px] bg-blue-600 text-white text-lg font-bold rounded-xl shadow-lg shadow-blue-200 active:bg-blue-700 transition-colors">
+                    <button type="submit" id="submitBtn" class="w-2/3 min-h-[56px] bg-blue-600 text-white text-lg font-bold rounded-xl shadow-lg shadow-blue-200 active:bg-blue-700 transition-colors">
                         ยืนยันการจอง
                     </button>
                 </div>
@@ -283,10 +283,21 @@
             }
         });
 
-        // --- 3. ฟังก์ชันกดยืนยันการจอง (ยิง Webhook ไปหา Google Apps Script) ---
+// --- 3. ฟังก์ชันกดยืนยันการจอง (ยิง Webhook ไปหา Google Apps Script) ---
         window.submitBooking = function(event) {
             event.preventDefault(); 
             
+            // 1. อ้างอิงปุ่มและเปลี่ยนหน้าตาเป็นโหมดกำลังโหลด (สีเทา)
+            const submitBtn = document.getElementById("submitBtn");
+            const originalText = submitBtn ? submitBtn.innerText : "ยืนยันการจอง";
+            
+            if (submitBtn) {
+                submitBtn.innerText = "กำลังดำเนินการจอง... ⏳";
+                submitBtn.classList.remove("bg-blue-600", "active:bg-blue-700", "shadow-blue-200");
+                submitBtn.classList.add("bg-slate-400", "cursor-not-allowed");
+                submitBtn.disabled = true;
+            }
+
             let selectedEquipment = [];
             document.querySelectorAll('input[name="equipment"]:checked').forEach(cb => selectedEquipment.push(cb.value));
             
@@ -299,36 +310,45 @@
                 requesterName: document.getElementById('requesterName').value,
                 department: document.getElementById('department').value,
                 activityName: document.getElementById('activityName').value,
-                equipment: selectedEquipment.join(', '),
-                otherDetails: document.getElementById('otherDetails').value
+                equipment: selectedEquipment.join(', ') || "ไม่ได้ใช้อุปกรณ์",
+                otherDetails: document.getElementById('otherDetails').value || "-"
             };
 
             // ลิงก์ Webhook ของ Google Apps Script ของคุณ
             const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxrKIwlliRzwDrE1moSu8ngFQNpb6i9a4iE1AcamKCKH5Ke50c19QQz9bD9ktGjYQ054Q/exec"; 
             
-            // เปลี่ยนมาใช้ WEBHOOK_URL ตรงนี้
             fetch(WEBHOOK_URL, {
               method: "POST",
               headers: {
                 "Content-Type": "text/plain;charset=utf-8", 
               },
-              // เปลี่ยนจาก data เป็น payload ให้ตรงกับตัวแปรด้านบน
               body: JSON.stringify({ body: payload }), 
               redirect: "follow" 
-              })
-              .then(response => response.json())
-              .then(result => {
+            })
+            .then(response => response.json())
+            .then(result => {
                 if(result.status === "success") {
-                    alert("จองห้องสำเร็จ!");
+                    alert("✅ จองห้องสำเร็จ!");
+                    const form = document.getElementById("bookingForm");
+                    if (form) form.reset();
                     closeModal(); // ปิดหน้าต่างเมื่อจองเสร็จ
                 } else {
                     alert("แจ้งเตือน: " + result.message);
                 }
-              })
-              .catch(error => {
+            })
+            .catch(error => {
                 console.error("Error:", error);
-                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
-              });
+                alert("❌ เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
+            })
+            .finally(() => {
+                // คืนสภาพปุ่มกลับเป็นสีน้ำเงินเหมือนเดิมเมื่อประมวลผลเสร็จสิ้น
+                if (submitBtn) {
+                    submitBtn.innerText = originalText;
+                    submitBtn.classList.remove("bg-slate-400", "cursor-not-allowed");
+                    submitBtn.classList.add("bg-blue-600", "active:bg-blue-700", "shadow-blue-200");
+                    submitBtn.disabled = false;
+                }
+            });
         };
     </script>
 </body>
