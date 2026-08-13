@@ -181,31 +181,98 @@
     </div>
 
 <!-- เปลี่ยนเป็น type="module" เพื่อให้ใช้ Firebase ได้ -->
-    <script type="module">
+<script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
         import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
 
-        // 1. ตั้งค่าการเชื่อมต่อ Firebase (ใช้ลิงก์ของคุณครู)
+        // 1. ตั้งค่าการเชื่อมต่อ Firebase
         const firebaseConfig = {
             databaseURL: "https://room-runty-booking-system-default-rtdb.asia-southeast1.firebasedatabase.app"
         };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // --- ระบบจัดการเดือนและวันที่ (เหมือนเดิม) ---
+        // --- ระบบตัวแปรกลาง ---
         let currentMonthDate = new Date(); 
+        let allBookingsData = null; // เพิ่มตัวแปรเก็บข้อมูลคิวทั้งหมดไว้ตรงกลาง
+
         const displayElement = document.getElementById('currentMonthDisplay');
         const timelineMonthElement = document.getElementById('timelineMonth');
         const hiddenMonthPicker = document.getElementById('hiddenMonthPicker');
         const thaiMonthsFull = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
 
+        // --- ฟังก์ชันวาดกล่องคิว (ที่มีระบบกรองและเรียงลำดับ) ---
+        function renderBookings() {
+            const timelineContainer = document.getElementById('timelineContainer');
+            const emptyState = document.getElementById('emptyState');
+            if (!timelineContainer || !emptyState) return;
+
+            // ลบกล่องคิวเก่าทิ้งทั้งหมด
+            const oldCards = timelineContainer.querySelectorAll('.booking-card');
+            oldCards.forEach(card => card.remove());
+
+            if (!allBookingsData) {
+                emptyState.style.display = 'flex';
+                return;
+            }
+
+            const currentYear = currentMonthDate.getFullYear();
+            const currentMonth = currentMonthDate.getMonth();
+
+            // ก. แปลง Object เป็น Array แล้ว "กรอง (Filter)" เฉพาะเดือน/ปี ปัจจุบัน
+            let filteredBookings = [];
+            for (let key in allBookingsData) {
+                const booking = allBookingsData[key];
+                const startDate = new Date(booking.start);
+                
+                if (startDate.getFullYear() === currentYear && startDate.getMonth() === currentMonth) {
+                    filteredBookings.push(booking);
+                }
+            }
+
+            // ข. "เรียงลำดับ (Sort)" จากวันที่น้อย ไป มาก (วันที่ 1 ไว้บนสุด)
+            filteredBookings.sort((a, b) => new Date(a.start) - new Date(b.start));
+
+            // ค. วาดลงหน้าจอ
+            if (filteredBookings.length > 0) {
+                emptyState.style.display = 'none';
+                
+                filteredBookings.forEach(booking => {
+                    let startDate = new Date(booking.start);
+                    let endDate = new Date(booking.end);
+                    
+                    let dayStr = startDate.getDate() + ' ' + ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."][startDate.getMonth()];
+                    let timeStr = String(startDate.getHours()).padStart(2,'0') + ':' + String(startDate.getMinutes()).padStart(2,'0') + ' - ' + String(endDate.getHours()).padStart(2,'0') + ':' + String(endDate.getMinutes()).padStart(2,'0');
+
+                    const newCard = document.createElement('div');
+                    newCard.className = 'booking-card w-full bg-white border border-slate-200 rounded-2xl p-4 shadow-sm relative overflow-hidden mt-4';
+                    newCard.innerHTML = `
+                        <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-red-500"></div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xl font-bold text-slate-800">${dayStr} (${timeStr})</span>
+                            <span class="bg-red-100 text-red-600 text-sm px-2 py-1 rounded-md font-bold">จองแล้ว</span>
+                        </div>
+                        <p class="text-slate-600 font-medium">${booking.title || 'ไม่ระบุกิจกรรม'}</p>
+                    `;
+                    timelineContainer.appendChild(newCard);
+                });
+            } else {
+                emptyState.style.display = 'flex';
+            }
+        }
+
+        // --- ระบบจัดการเดือน ---
         function updateMonthDisplay() {
             const monthIndex = currentMonthDate.getMonth();
             const year = currentMonthDate.getFullYear() + 543;
             displayElement.innerText = `${thaiMonthsFull[monthIndex]} ${year}`;
             timelineMonthElement.innerText = `ประจำเดือน ${thaiMonthsFull[monthIndex]} ${year}`;
             hiddenMonthPicker.value = `${currentMonthDate.getFullYear()}-${String(monthIndex + 1).padStart(2, '0')}`;
+            
+            // เรียกใช้วาดกล่องใหม่ทุกครั้งที่มีการเปลี่ยนเดือน
+            renderBookings(); 
         }
+
         window.changeMonth = function(months) {
             currentMonthDate.setMonth(currentMonthDate.getMonth() + months);
             updateMonthDisplay();
@@ -220,7 +287,7 @@
         };
         updateMonthDisplay();
 
-        // --- ระบบจัดการปุ่มและหน้าต่าง Modal (เหมือนเดิม) ---
+        // --- ระบบ Modal ---
         const modal = document.getElementById('bookingModal');
         const backdrop = document.getElementById('modalBackdrop');
         const bookingDateInput = document.getElementById('bookingDate');
@@ -244,50 +311,14 @@
         // --- 2. ฟังเสียงอัปเดตจาก Firebase แบบ Real-time ---
         const bookingsRef = ref(db, 'bookings');
         onValue(bookingsRef, (snapshot) => {
-            const data = snapshot.val();
-            const timelineContainer = document.getElementById('timelineContainer');
-            const emptyState = document.getElementById('emptyState');
-            
-            // ลบกล่องคิวเก่าทิ้งทั้งหมดก่อน (เหลือไว้แค่ หัวข้อ กับ Empty State)
-            const oldCards = timelineContainer.querySelectorAll('.booking-card');
-            oldCards.forEach(card => card.remove());
-
-            if (data) {
-                emptyState.style.display = 'none'; // ซ่อนข้อความว่าไม่มีคิว
-                
-                // วนลูปสร้างกล่องคิวใหม่จากข้อมูล Firebase
-                for (let key in data) {
-                    const booking = data[key];
-                    // สมมติว่า Firebase ส่ง title มาเป็น "ติวเสริมวิชาคอมพิวเตอร์"
-                    // และส่ง start มาแบบ "2026-08-12T09:00:00"
-                    let startDate = new Date(booking.start);
-                    let endDate = new Date(booking.end);
-                    
-                    let dayStr = startDate.getDate() + ' ' + ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."][startDate.getMonth()];
-                    let timeStr = String(startDate.getHours()).padStart(2,'0') + ':' + String(startDate.getMinutes()).padStart(2,'0') + ' - ' + String(endDate.getHours()).padStart(2,'0') + ':' + String(endDate.getMinutes()).padStart(2,'0');
-
-                    const newCard = document.createElement('div');
-                    newCard.className = 'booking-card w-full bg-white border border-slate-200 rounded-2xl p-4 shadow-sm relative overflow-hidden mt-4';
-                    newCard.innerHTML = `
-                        <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-red-500"></div>
-                        <div class="flex justify-between items-center mb-1">
-                            <span class="text-xl font-bold text-slate-800">${dayStr} (${timeStr})</span>
-                            <span class="bg-red-100 text-red-600 text-sm px-2 py-1 rounded-md font-bold">จองแล้ว</span>
-                        </div>
-                        <p class="text-slate-600 font-medium">${booking.title || 'ไม่ระบุกิจกรรม'}</p>
-                    `;
-                    timelineContainer.appendChild(newCard);
-                }
-            } else {
-                emptyState.style.display = 'flex'; // ถ้าไม่มีข้อมูลเลย ให้โชว์ Empty State
-            }
+            allBookingsData = snapshot.val(); // เก็บลงตัวแปรกลางก่อน
+            renderBookings(); // แล้วค่อยสั่งให้มัน กรอง+เรียง+วาด
         });
 
-// --- 3. ฟังก์ชันกดยืนยันการจอง (ยิง Webhook ไปหา Google Apps Script) ---
+        // --- 3. ฟังก์ชันกดยืนยันการจอง ---
         window.submitBooking = function(event) {
             event.preventDefault(); 
             
-            // 1. อ้างอิงปุ่มและเปลี่ยนหน้าตาเป็นโหมดกำลังโหลด (สีเทา)
             const submitBtn = document.getElementById("submitBtn");
             const originalText = submitBtn ? submitBtn.innerText : "ยืนยันการจอง";
             
@@ -301,7 +332,6 @@
             let selectedEquipment = [];
             document.querySelectorAll('input[name="equipment"]:checked').forEach(cb => selectedEquipment.push(cb.value));
             
-            // เก็บข้อมูลทั้งหมดไว้ในตัวแปรชื่อ payload
             const payload = {
                 room: "ห้องประชุมรันตี",
                 bookingDate: document.getElementById('bookingDate').value, 
@@ -314,7 +344,6 @@
                 otherDetails: document.getElementById('otherDetails').value || "-"
             };
 
-            // ลิงก์ Webhook ของ Google Apps Script ของคุณ
             const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbxrKIwlliRzwDrE1moSu8ngFQNpb6i9a4iE1AcamKCKH5Ke50c19QQz9bD9ktGjYQ054Q/exec"; 
             
             fetch(WEBHOOK_URL, {
@@ -331,7 +360,7 @@
                     alert("✅ จองห้องสำเร็จ!");
                     const form = document.getElementById("bookingForm");
                     if (form) form.reset();
-                    closeModal(); // ปิดหน้าต่างเมื่อจองเสร็จ
+                    closeModal();
                 } else {
                     alert("แจ้งเตือน: " + result.message);
                 }
@@ -341,7 +370,6 @@
                 alert("❌ เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
             })
             .finally(() => {
-                // คืนสภาพปุ่มกลับเป็นสีน้ำเงินเหมือนเดิมเมื่อประมวลผลเสร็จสิ้น
                 if (submitBtn) {
                     submitBtn.innerText = originalText;
                     submitBtn.classList.remove("bg-slate-400", "cursor-not-allowed");
