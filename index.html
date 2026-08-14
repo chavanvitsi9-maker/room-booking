@@ -477,7 +477,7 @@
         calendar.render();
 
         // ฟังเสียงอัปเดตจาก Firebase แบบ Real-time
-        const bookingsRef = ref(db, 'bookings');
+const bookingsRef = ref(db, 'bookings');
         onValue(bookingsRef, (snapshot) => {
             const data = snapshot.val();
             let eventsArray = [];
@@ -496,8 +496,63 @@
                 }
             }
             
+            // 1. อัปเดตตารางปฏิทินหลัก (ส่วนขวา)
             calendar.removeAllEventSources();
             calendar.addEventSource(eventsArray);
+
+            // 2. สร้างรายการจองในแถบเมนู (ส่วนซ้าย) ให้หน้าตาเหมือนมือถือ
+            const sidebarList = document.getElementById('sidebarBookingList');
+            if (sidebarList) {
+                if (eventsArray.length === 0) {
+                    sidebarList.innerHTML = '<p class="text-sm text-slate-500 text-center mt-10">ยังไม่มีรายการจอง</p>';
+                } else {
+                    // เรียงลำดับคิวจากวันที่เก่าสุด ไป ใหม่สุด
+                    eventsArray.sort((a, b) => new Date(a.start) - new Date(b.start));
+                    
+                    let htmlContent = '';
+                    let lastDateKey = ''; // ตัวแปรเก็บวันที่เพื่อใช้จัดกลุ่ม
+
+                    eventsArray.forEach(event => {
+                        const startDate = new Date(event.start);
+                        const endDate = event.end ? new Date(event.end) : startDate;
+                        
+                        // แปลงวันที่เป็นข้อความ เช่น "14 สิงหาคม 2569" และ "วันศุกร์"
+                        const dateStr = startDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+                        const dayStr = startDate.toLocaleDateString('th-TH', { weekday: 'long' });
+                        
+                        // หากเป็นวันที่ใหม่ ให้สร้างหัวข้อขั้น (เหมือนในมือถือ)
+                        if (dateStr !== lastDateKey) {
+                            htmlContent += `
+                                <div class="mt-4 mb-2 flex justify-between items-end border-b border-slate-200 pb-1">
+                                    <span class="font-bold text-slate-800 text-xs">${dateStr}</span>
+                                    <span class="text-xs text-slate-500 font-medium">${dayStr}</span>
+                                </div>
+                            `;
+                            lastDateKey = dateStr;
+                        }
+
+                        // จัดรูปแบบเวลา เช่น "08:10 - 09:00"
+                        const startTime = startDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                        const endTime = endDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+                        // สร้างการ์ดรายการ (กดคลิกเพื่อดูรายละเอียดได้ด้วย)
+                        htmlContent += `
+                            <div class="bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:border-blue-300 hover:shadow-md transition-all mb-2 cursor-pointer group" onclick="alert('📌 ${event.title}\\n📅 วันที่: ${dateStr}\\n⏰ เวลา: ${startTime} - ${endTime}')">
+                                <div class="flex items-start gap-2">
+                                    <div class="w-2 h-2 mt-1.5 rounded-full bg-red-500 shrink-0 group-hover:scale-125 transition-transform"></div>
+                                    <div class="flex-1 overflow-hidden">
+                                        <p class="text-xs font-bold text-slate-700">${startTime} - ${endTime}</p>
+                                        <p class="text-xs text-slate-600 truncate mt-0.5">${event.title}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    // นำโค้ดที่สร้างเสร็จแล้วไปแสดงหน้าเว็บ
+                    sidebarList.innerHTML = htmlContent;
+                }
+            }
         });
 
         // --- ฟังก์ชันกดยืนยันการจอง ---
