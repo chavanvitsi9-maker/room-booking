@@ -17,6 +17,8 @@
     <!-- 4. เพิ่มใหม่: โหลด FullCalendar v6 (ไลบรารีสำหรับสร้างตารางปฏิทิน) -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+	
     <!-- 5. Custom CSS สำหรับปรับแต่งหน้าตาเฉพาะจุด -->
     <style>
         body { 
@@ -586,19 +588,48 @@ const bookingsRef = ref(db, 'bookings');
               redirect: "follow" 
             })
             .then(response => response.json())
-            .then(result => {
+.then(result => {
                 if(result.status === "success") {
-                    alert("✅ จองห้องสำเร็จ!");
-                    const form = document.getElementById("bookingForm");
-                    if (form) form.reset();
-                    closeModal();
+                    // Popup จองสำเร็จ (ไอคอนสีเขียว)
+                    Swal.fire({
+                        title: 'จองห้องสำเร็จ!',
+                        text: 'ระบบได้บันทึกคิวของคุณเรียบร้อยแล้ว',
+                        icon: 'success',
+                        confirmButtonText: 'ตกลง',
+                        confirmButtonColor: '#2563eb',
+                        customClass: {
+                            popup: 'rounded-2xl',
+                            title: 'font-prompt text-xl font-bold text-slate-800'
+                        }
+                    }).then(() => {
+                        const form = document.getElementById("bookingForm");
+                        if (form) form.reset();
+                        closeModal();
+                    });
                 } else {
-                    alert("แจ้งเตือน: " + result.message);
+                    // Popup คิวซ้ำ / จองไม่สำเร็จ (ไอคอนสีแดง)
+                    Swal.fire({
+                        title: 'ไม่สามารถจองได้',
+                        text: result.message,
+                        icon: 'error',
+                        confirmButtonText: 'เลือกเวลาใหม่',
+                        confirmButtonColor: '#ef4444',
+                        customClass: {
+                            popup: 'rounded-2xl border-2 border-red-100',
+                            title: 'font-prompt text-xl font-bold text-red-600'
+                        }
+                    });
                 }
             })
             .catch(error => {
                 console.error("Error:", error);
-                alert("❌ เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
+                Swal.fire({
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง',
+                    icon: 'warning',
+                    confirmButtonText: 'ตกลง',
+                    confirmButtonColor: '#f59e0b'
+                });
             })
             .finally(() => {
                 submitBtn.innerHTML = "ยืนยันการจอง";
