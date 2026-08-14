@@ -432,13 +432,13 @@
         startTimeInput.addEventListener('change', checkTimeValidity);
         endTimeInput.addEventListener('change', checkTimeValidity);
 
-        // --- สร้างและตั้งค่าปฏิทิน FullCalendar (นำ DOMContentLoaded ออกแล้ว) ---
+// --- สร้างและตั้งค่าปฏิทิน FullCalendar ---
         const calendarEl = document.getElementById('calendar');
         
         // ตรวจสอบขนาดหน้าจอ
         const isMobile = window.innerWidth < 768;
 
-calendar = new FullCalendar.Calendar(calendarEl, {
+        calendar = new FullCalendar.Calendar(calendarEl, {
             locale: 'th', 
             initialView: isMobile ? 'listMonth' : 'dayGridMonth', 
             headerToolbar: {
@@ -452,11 +452,8 @@ calendar = new FullCalendar.Calendar(calendarEl, {
             height: '100%',
             themeSystem: 'standard',
             events: [], 
-            
-            // 🌟 เพิ่ม 2 บรรทัดนี้: ทำให้ตารางเป็นโหมด "เลือกได้" จะตอบสนองการคลิกดีกว่าเดิม 100%
-            selectable: true,
-            selectMirror: true,
 
+            // เปลี่ยนหน้าตาอัตโนมัติเมื่อหมุนหน้าจอ
             windowResize: function(arg) {
                 const isMobileNow = window.innerWidth < 768;
                 calendar.changeView(isMobileNow ? 'listMonth' : 'dayGridMonth');
@@ -467,15 +464,9 @@ calendar = new FullCalendar.Calendar(calendarEl, {
                 });
             },
             
-            // 🌟 ดักจับทั้งการ "จิ้มทีเดียว (dateClick)" และ "คลิกลากคลุม (select)"
-            select: function(info) {
-                // ตัดเวลาออก เอาเฉพาะวันที่ YYYY-MM-DD
-                window.openModal(info.startStr.split('T')[0]); 
-            },
-            dateClick: function(info) {
-                window.openModal(info.dateStr.split('T')[0]); 
-            },
+            // ❌ เอาฟังก์ชัน dateClick และ select ออกไปแล้ว ผู้ใช้จะกดที่วันที่ว่างไม่ได้
             
+            // ✅ คงไว้แค่ eventClick: กดดูรายละเอียดคิวสีแดงที่ถูกจองไปแล้วได้ปกติ
             eventClick: function(info) {
                 const startText = info.event.start.toLocaleTimeString('th-TH', {hour: '2-digit', minute: '2-digit'});
                 const endText = info.event.end ? info.event.end.toLocaleTimeString('th-TH', {hour: '2-digit', minute: '2-digit'}) : '';
