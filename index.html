@@ -358,13 +358,13 @@
     </div>
     <!-- สิ้นสุดส่วนที่ 3 -->
 <!-- ======================================================= -->
-    <!-- ส่วนที่ 4: JavaScript (Firebase + FullCalendar + Webhook) -->
+    <!-- ส่วนที่ 4: JavaScript (ฉบับสมบูรณ์ แก้ไขข้อผิดพลาดแล้ว) -->
     <!-- ======================================================= -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
         import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
 
-        // 1. ตั้งค่าการเชื่อมต่อ Firebase (ใช้ลิงก์เดิมของคุณครู)
+        // 1. ตั้งค่าการเชื่อมต่อ Firebase 
         const firebaseConfig = {
             databaseURL: "https://room-runty-booking-system-default-rtdb.asia-southeast1.firebasedatabase.app"
         };
@@ -388,35 +388,33 @@
             backdrop.classList.remove('hidden');
             setTimeout(() => backdrop.classList.remove('opacity-0'), 10);
             
-            // แอนิเมชันเปิด (มือถือเลื่อนขึ้น, PC โผล่ตรงกลาง)
             modal.classList.remove('translate-y-full', 'md:translate-y-10', 'md:scale-95', 'md:opacity-0');
 
             if (prefillDate) {
-                // ถ้ากดจากช่องปฏิทิน เอาวันที่นั้นมาใส่ให้เลย
                 bookingDateInput.value = prefillDate;
             } else if (!bookingDateInput.value) {
-                // ถ้ากดปุ่ม "สร้างการจองห้อง" ใช้วันนี้เป็นค่าเริ่มต้น
                 const today = new Date();
                 const localDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
                 bookingDateInput.value = localDate;
             }
         };
 
-        // ฟังก์ชันปิด Modal
+        // ฟังก์ชันปิด Modal (แก้ไขปัญหาปุ่มยืนยันค้างแล้ว)
         window.closeModal = function() {
             modal.classList.add('translate-y-full', 'md:translate-y-10', 'md:scale-95', 'md:opacity-0');
             backdrop.classList.add('opacity-0');
             setTimeout(() => backdrop.classList.add('hidden'), 300);
             
-            // ล้างข้อมูลฟอร์ม
             document.getElementById('bookingForm').reset();
             timeError.classList.add('hidden');
-        };
+
+            // ปลดล็อกปุ่ม
             submitBtn.disabled = false;
             submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             submitBtn.innerHTML = "ยืนยันการจอง";
+        };
 
-        // --- ตรวจสอบความถูกต้องของเวลา (เริ่มต้องน้อยกว่าจบ) ---
+        // --- ตรวจสอบความถูกต้องของเวลา ---
         function checkTimeValidity() {
             if (startTimeInput.value && endTimeInput.value) {
                 if (startTimeInput.value >= endTimeInput.value) {
@@ -433,28 +431,29 @@
         startTimeInput.addEventListener('change', checkTimeValidity);
         endTimeInput.addEventListener('change', checkTimeValidity);
 
-        // --- สร้างและตั้งค่าปฏิทิน FullCalendar ---
-            const calendarEl = document.getElementById('calendar');
-            
-            // ตรวจสอบขนาดหน้าจอ
-	const isMobile = window.innerWidth < 768;
+        // --- สร้างและตั้งค่าปฏิทิน FullCalendar (นำ DOMContentLoaded ออกแล้ว) ---
         const calendarEl = document.getElementById('calendar');
-            calendar = new FullCalendar.Calendar(calendarEl, {
-                locale: 'th', // ใช้ภาษาไทย
-                initialView: isMobile ? 'listMonth' : 'dayGridMonth', // มือถือโชว์เป็นลิสต์ PC โชว์เป็นตารางเดือน
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    // มือถือมีแค่เดือนกับลิสต์, PC มีเดือน/สัปดาห์/วัน
-                    right: isMobile ? 'listMonth,dayGridMonth' : 'dayGridMonth,timeGridWeek,timeGridDay'
-                },
-                buttonText: {
-                    today: 'วันนี้', month: 'เดือน', week: 'สัปดาห์', day: 'วัน', list: 'รายการ'
-                },
-                height: '100%',
-                themeSystem: 'standard',
-                events: [], // จะถูกเติมข้อมูลจาก Firebase ด้านล่าง
-                windowResize: function(arg) {
+        
+        // ตรวจสอบขนาดหน้าจอ
+        const isMobile = window.innerWidth < 768;
+
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            locale: 'th', 
+            initialView: isMobile ? 'listMonth' : 'dayGridMonth', 
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: isMobile ? 'listMonth,dayGridMonth' : 'dayGridMonth,timeGridWeek,timeGridDay'
+            },
+            buttonText: {
+                today: 'วันนี้', month: 'เดือน', week: 'สัปดาห์', day: 'วัน', list: 'รายการ'
+            },
+            height: '100%',
+            themeSystem: 'standard',
+            events: [], 
+            
+            // ทำให้ปฏิทินเปลี่ยนร่างอัตโนมัติเมื่อหมุนหน้าจอ
+            windowResize: function(arg) {
                 const isMobileNow = window.innerWidth < 768;
                 calendar.changeView(isMobileNow ? 'listMonth' : 'dayGridMonth');
                 calendar.setOption('headerToolbar', {
@@ -463,53 +462,49 @@
                     right: isMobileNow ? 'listMonth,dayGridMonth' : 'dayGridMonth,timeGridWeek,timeGridDay'
                 });
             },
-                // เมื่อผู้ใช้คลิกช่องวันที่ว่าง
-                dateClick: function(info) {
-                    window.openModal(info.dateStr); 
-                },
-                
-                // เมื่อคลิกที่คิวสีแดง (ที่จองแล้ว)
-                eventClick: function(info) {
-                    const startText = info.event.start.toLocaleTimeString('th-TH', {hour: '2-digit', minute: '2-digit'});
-                    const endText = info.event.end ? info.event.end.toLocaleTimeString('th-TH', {hour: '2-digit', minute: '2-digit'}) : '';
-                    alert(`📌 ${info.event.title}\n⏰ เวลา: ${startText} - ${endText}`);
+            
+            dateClick: function(info) {
+                window.openModal(info.dateStr); 
+            },
+            
+            eventClick: function(info) {
+                const startText = info.event.start.toLocaleTimeString('th-TH', {hour: '2-digit', minute: '2-digit'});
+                const endText = info.event.end ? info.event.end.toLocaleTimeString('th-TH', {hour: '2-digit', minute: '2-digit'}) : '';
+                alert(`📌 ${info.event.title}\n⏰ เวลา: ${startText} - ${endText}`);
+            }
+        });
+        
+        // สั่งวาดปฏิทิน
+        calendar.render();
+
+        // ฟังเสียงอัปเดตจาก Firebase แบบ Real-time
+        const bookingsRef = ref(db, 'bookings');
+        onValue(bookingsRef, (snapshot) => {
+            const data = snapshot.val();
+            let eventsArray = [];
+
+            if (data) {
+                for (let key in data) {
+                    const booking = data[key];
+                    eventsArray.push({
+                        id: booking.id,
+                        title: booking.title || 'จองแล้ว',
+                        start: booking.start,
+                        end: booking.end,
+                        color: '#ef4444', 
+                        textColor: '#ffffff'
+                    });
                 }
-            });
-            calendar.render();
+            }
+            
+            calendar.removeAllEventSources();
+            calendar.addEventSource(eventsArray);
+        });
 
-            // ฟังเสียงอัปเดตจาก Firebase แบบ Real-time
-            const bookingsRef = ref(db, 'bookings');
-            onValue(bookingsRef, (snapshot) => {
-                const data = snapshot.val();
-                let eventsArray = [];
-
-                if (data) {
-                    for (let key in data) {
-                        const booking = data[key];
-                        // นำข้อมูลเข้า Array ตามรูปแบบที่ FullCalendar ต้องการ
-                        eventsArray.push({
-                            id: booking.id,
-                            title: booking.title || 'จองแล้ว',
-                            start: booking.start,
-                            end: booking.end,
-                            color: '#ef4444', // สีแดงหมายถึงถูกจองแล้ว
-                            textColor: '#ffffff'
-                        });
-                    }
-                }
-                
-                // เคลียร์ข้อมูลเก่าและวาดคิวใหม่ลงปฏิทินอัตโนมัติ
-                calendar.removeAllEventSources();
-                calendar.addEventSource(eventsArray);
-            });
-
-        // --- ฟังก์ชันกดยืนยันการจอง (ยิง Webhook เดิม) ---
+        // --- ฟังก์ชันกดยืนยันการจอง ---
         window.submitBooking = function(event) {
             event.preventDefault(); 
             
-            const originalText = submitBtn.innerText;
-            
-            // เปลี่ยนสถานะปุ่มระหว่างรอ
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> กำลังดำเนินการ...';
             submitBtn.classList.remove("bg-blue-600", "hover:bg-blue-700", "shadow-blue-200");
             submitBtn.classList.add("bg-slate-400", "cursor-not-allowed");
@@ -518,7 +513,6 @@
             let selectedEquipment = [];
             document.querySelectorAll('input[name="equipment"]:checked').forEach(cb => selectedEquipment.push(cb.value));
             
-            // โครงสร้าง Payload เดิมเป๊ะ ไม่กระทบหลังบ้าน
             const payload = {
                 room: "ห้องประชุมรันตี",
                 bookingDate: document.getElementById('bookingDate').value, 
@@ -556,7 +550,6 @@
                 alert("❌ เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง");
             })
             .finally(() => {
-                // คืนค่าปุ่มกลับมาเหมือนเดิม
                 submitBtn.innerHTML = "ยืนยันการจอง";
                 submitBtn.classList.remove("bg-slate-400", "cursor-not-allowed");
                 submitBtn.classList.add("bg-blue-600", "hover:bg-blue-700", "shadow-blue-200");
