@@ -390,9 +390,10 @@
             
             modal.classList.remove('translate-y-full', 'md:translate-y-10', 'md:scale-95', 'md:opacity-0');
 
-            if (prefillDate) {
+            // 🌟 แก้ไข: เช็คให้ชัวร์ว่าค่าที่ส่งมาคือวันที่แบบข้อความ (String) ป้องกัน Error
+            if (prefillDate && typeof prefillDate === 'string') {
                 bookingDateInput.value = prefillDate;
-            } else if (!bookingDateInput.value) {
+            } else {
                 const today = new Date();
                 const localDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
                 bookingDateInput.value = localDate;
@@ -437,7 +438,7 @@
         // ตรวจสอบขนาดหน้าจอ
         const isMobile = window.innerWidth < 768;
 
-        calendar = new FullCalendar.Calendar(calendarEl, {
+calendar = new FullCalendar.Calendar(calendarEl, {
             locale: 'th', 
             initialView: isMobile ? 'listMonth' : 'dayGridMonth', 
             headerToolbar: {
@@ -452,7 +453,10 @@
             themeSystem: 'standard',
             events: [], 
             
-            // ทำให้ปฏิทินเปลี่ยนร่างอัตโนมัติเมื่อหมุนหน้าจอ
+            // 🌟 เพิ่ม 2 บรรทัดนี้: ทำให้ตารางเป็นโหมด "เลือกได้" จะตอบสนองการคลิกดีกว่าเดิม 100%
+            selectable: true,
+            selectMirror: true,
+
             windowResize: function(arg) {
                 const isMobileNow = window.innerWidth < 768;
                 calendar.changeView(isMobileNow ? 'listMonth' : 'dayGridMonth');
@@ -463,8 +467,13 @@
                 });
             },
             
+            // 🌟 ดักจับทั้งการ "จิ้มทีเดียว (dateClick)" และ "คลิกลากคลุม (select)"
+            select: function(info) {
+                // ตัดเวลาออก เอาเฉพาะวันที่ YYYY-MM-DD
+                window.openModal(info.startStr.split('T')[0]); 
+            },
             dateClick: function(info) {
-                window.openModal(info.dateStr); 
+                window.openModal(info.dateStr.split('T')[0]); 
             },
             
             eventClick: function(info) {
