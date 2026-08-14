@@ -199,7 +199,7 @@
     <div id="modalBackdrop" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 hidden opacity-0 transition-opacity duration-300" onclick="closeModal()"></div>
     
     <!-- ตัวกล่อง Modal -->
-    <div id="bookingModal" class="fixed z-50 bottom-0 md:bottom-auto md:top-1/2 left-0 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 right-0 md:right-auto w-full md:w-[650px] bg-white rounded-t-3xl md:rounded-2xl shadow-2xl transform translate-y-full md:translate-y-10 md:scale-95 md:opacity-0 transition-all duration-300 max-h-[90vh] md:max-h-[85vh] flex flex-col">
+    <div id="bookingModal" class="fixed z-50 bottom-0 md:bottom-auto md:top-1/2 left-0 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 right-0 md:right-auto w-full md:w-[650px] bg-white rounded-t-3xl md:rounded-2xl shadow-2xl transform translate-y-full md:translate-y-10 md:scale-95 md:opacity-0 pointer-events-none transition-all duration-300 max-h-[90vh] md:max-h-[85vh] flex flex-col">
         
         <!-- แถบลากสำหรับมือถือ (แสดงเฉพาะบนมือถือ) -->
         <div class="flex justify-center pt-4 pb-2 md:hidden cursor-pointer" onclick="closeModal()">
@@ -383,13 +383,13 @@
         const submitBtn = document.getElementById('submitBtn');
 
         // ฟังก์ชันเปิด Modal พร้อมล็อกวันที่หากคลิกจากปฏิทิน
-        window.openModal = function(prefillDate = null) {
+window.openModal = function(prefillDate = null) {
             backdrop.classList.remove('hidden');
             setTimeout(() => backdrop.classList.remove('opacity-0'), 10);
             
-            modal.classList.remove('translate-y-full', 'md:translate-y-10', 'md:scale-95', 'md:opacity-0');
+            // 🌟 แก้ไข: ลบ pointer-events-none ออก เพื่อให้ฟอร์มกลับมากดได้
+            modal.classList.remove('translate-y-full', 'md:translate-y-10', 'md:scale-95', 'md:opacity-0', 'pointer-events-none');
 
-            // 🌟 แก้ไข: เช็คให้ชัวร์ว่าค่าที่ส่งมาคือวันที่แบบข้อความ (String) ป้องกัน Error
             if (prefillDate && typeof prefillDate === 'string') {
                 bookingDateInput.value = prefillDate;
             } else {
@@ -399,21 +399,20 @@
             }
         };
 
-        // ฟังก์ชันปิด Modal (แก้ไขปัญหาปุ่มยืนยันค้างแล้ว)
+        // ฟังก์ชันปิด Modal
         window.closeModal = function() {
-            modal.classList.add('translate-y-full', 'md:translate-y-10', 'md:scale-95', 'md:opacity-0');
+            // 🌟 แก้ไข: เติม pointer-events-none กลับเข้าไป เพื่อให้ฟอร์มทะลุเมาส์ได้ตอนล่องหน
+            modal.classList.add('translate-y-full', 'md:translate-y-10', 'md:scale-95', 'md:opacity-0', 'pointer-events-none');
             backdrop.classList.add('opacity-0');
             setTimeout(() => backdrop.classList.add('hidden'), 300);
             
             document.getElementById('bookingForm').reset();
             timeError.classList.add('hidden');
 
-            // ปลดล็อกปุ่ม
             submitBtn.disabled = false;
             submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             submitBtn.innerHTML = "ยืนยันการจอง";
         };
-
         // --- ตรวจสอบความถูกต้องของเวลา ---
         function checkTimeValidity() {
             if (startTimeInput.value && endTimeInput.value) {
