@@ -436,35 +436,42 @@ window.openModal = function(prefillDate = null) {
         // ตรวจสอบขนาดหน้าจอ
         const isMobile = window.innerWidth < 768;
 
-        calendar = new FullCalendar.Calendar(calendarEl, {
+calendar = new FullCalendar.Calendar(calendarEl, {
             locale: 'th', 
-            initialView: isMobile ? 'listMonth' : 'dayGridMonth', 
+            // 1. เปลี่ยนมุมมองเริ่มต้นบน PC ให้เป็นแบบ 'ตารางเวลาสัปดาห์'
+            initialView: isMobile ? 'listMonth' : 'timeGridWeek', 
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
-                right: isMobile ? 'listMonth,dayGridMonth' : 'dayGridMonth,timeGridWeek,timeGridDay'
+                // 2. จัดเรียงปุ่มเมนูขวาบนใหม่ เอาสัปดาห์กับวันขึ้นก่อน
+                right: isMobile ? 'listMonth,timeGridDay' : 'timeGridWeek,timeGridDay,dayGridMonth'
             },
             buttonText: {
                 today: 'วันนี้', month: 'เดือน', week: 'สัปดาห์', day: 'วัน', list: 'รายการ'
             },
             height: '100%',
             themeSystem: 'standard',
+            
+            // 3. เพิ่มการจำกัดเวลาให้ตรงกับคาบเรียน เพื่อให้ตารางดูง่าย ไม่ยาวเกินไป
+            slotMinTime: '08:00:00', // เริ่มแสดงเวลา 08:00 น.
+            slotMaxTime: '17:30:00', // สิ้นสุดเวลา 17:30 น.
+            allDaySlot: false,       // ปิดช่อง "ตลอดวัน" ด้านบนสุดทิ้งไป เพื่อประหยัดพื้นที่
+            expandRows: true,        // ขยายช่องตารางให้เต็มพื้นที่พอดี
+            
             events: [], 
 
             // เปลี่ยนหน้าตาอัตโนมัติเมื่อหมุนหน้าจอ
             windowResize: function(arg) {
                 const isMobileNow = window.innerWidth < 768;
-                calendar.changeView(isMobileNow ? 'listMonth' : 'dayGridMonth');
+                calendar.changeView(isMobileNow ? 'listMonth' : 'timeGridWeek');
                 calendar.setOption('headerToolbar', {
                     left: 'prev,next today',
                     center: 'title',
-                    right: isMobileNow ? 'listMonth,dayGridMonth' : 'dayGridMonth,timeGridWeek,timeGridDay'
+                    right: isMobileNow ? 'listMonth,timeGridDay' : 'timeGridWeek,timeGridDay,dayGridMonth'
                 });
             },
             
-            // ❌ เอาฟังก์ชัน dateClick และ select ออกไปแล้ว ผู้ใช้จะกดที่วันที่ว่างไม่ได้
-            
-            // ✅ คงไว้แค่ eventClick: กดดูรายละเอียดคิวสีแดงที่ถูกจองไปแล้วได้ปกติ
+            // กดดูรายละเอียดคิวสีแดงที่ถูกจองไปแล้วได้ปกติ
             eventClick: function(info) {
                 const startText = info.event.start.toLocaleTimeString('th-TH', {hour: '2-digit', minute: '2-digit'});
                 const endText = info.event.end ? info.event.end.toLocaleTimeString('th-TH', {hour: '2-digit', minute: '2-digit'}) : '';
