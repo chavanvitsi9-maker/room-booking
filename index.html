@@ -106,14 +106,41 @@
             z-index: 10;
         }
 
+        /* ป้องกันแถบปุ่มปฏิทินล้นขอบบนจอขนาดกลาง */
+        .fc .fc-toolbar {
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
         /* การแสดงผลแบบ Responsive: บีบเมนูปฏิทินเมื่อเปิดบนจอมือถือ */
         @media (max-width: 768px) {
             .fc .fc-toolbar {
                 flex-direction: column;
-                gap: 12px;
+                gap: 10px;
+            }
+            .fc .fc-toolbar-chunk {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 4px;
+            }
+            .fc .fc-button {
+                padding: 0.35rem 0.65rem;
+                font-size: 0.875rem;
             }
             .fc .fc-toolbar-title { font-size: 1.25rem !important; }
         }
+
+        /* ปรับปรุงการตัดคำบนการ์ดคิว และเน้นปุ่มมุมมองรายการ */
+        .fc-event .fc-event-main { white-space: normal !important; overflow: hidden; line-height: 1.4; padding: 2px 4px; }
+        .fc .fc-listMonth-button { background-color: #f1f5f9 !important; color: #2563eb !important; font-weight: bold !important; border-color: #cbd5e1 !important; }
+        @media (min-width: 769px) {
+            .fc .fc-listMonth-button { margin-left: 6px !important; border-radius: 0.5rem !important; }
+        }
+        .fc .fc-listMonth-button:hover, .fc .fc-listMonth-button.fc-button-active { background-color: #2563eb !important; color: #ffffff !important; }
+        .fc .fc-list-event:hover td { background-color: #eff6ff !important; cursor: pointer; }
+        .fc .fc-daygrid-day-frame, .fc .fc-timegrid-slot-lane { cursor: pointer; }
+        .fc .fc-daygrid-day:hover { background-color: rgba(239, 246, 255, 0.45); }
     </style>
 </head>
 <body class="antialiased">
@@ -170,13 +197,19 @@
         <div class="absolute inset-0 bg-slate-900/20 z-0"></div>
 
         <!-- พื้นที่กล่องขาวโค้งมน -->
-        <div class="h-full p-2 md:p-6 overflow-y-auto no-scrollbar w-full relative z-10">
+        <div class="h-full p-2 md:p-6 overflow-y-auto no-scrollbar w-full relative z-10 flex flex-col">
             
+            <!-- แถบคำแนะนำวิธีดูคิวจอง -->
+            <div class="mb-4 shrink-0 text-slate-700 text-sm md:text-base font-medium flex items-center bg-white/80 p-3 md:p-4 rounded-xl border border-blue-200 shadow-sm z-10">
+                <i class="fas fa-hand-pointer text-blue-600 mr-3 text-xl animate-bounce shrink-0"></i> 
+                <span><b>วิธีดูคิวจอง:</b> คลิกที่ <b>กล่องสีแดง</b> ในตารางเพื่อดูรายละเอียด หรือกดปุ่ม <b>"รายการ"</b> (มุมขวาบน) เพื่อดูคิวแบบเรียงบรรทัด</span>
+            </div>
+
             <!-- เปลี่ยนพื้นหลังกล่องปฏิทินเป็นแบบ กระจกฝ้า (bg-white/95 และ backdrop-blur-md) -->
-            <div class="bg-white/50 backdrop-blur-md rounded-2xl shadow-2xl border border-white/60 p-3 md:p-6 h-full min-h-[600px] w-full relative">
+            <div class="bg-white/50 backdrop-blur-md rounded-2xl shadow-2xl border border-white/60 p-3 md:p-6 flex-1 flex flex-col min-h-[600px] w-full relative">
                 
                 <!-- ตัว Container นี้สำคัญมาก: JavaScript จะใช้วาดปฏิทินที่นี่ -->
-                <div id="calendar" class="h-full w-full"></div>
+                <div id="calendar" class="flex-1 min-h-0 w-full"></div>
                 
             </div>
         </div>
@@ -430,11 +463,68 @@ window.openModal = function(prefillDate = null) {
         startTimeInput.addEventListener('change', checkTimeValidity);
         endTimeInput.addEventListener('change', checkTimeValidity);
 
+        // --- ฟังก์ชันช่วยเหลือสำหรับแสดงรายละเอียดการจองอย่างปลอดภัย ---
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function showBookingDetail(title, startInput, endInput) {
+            const startDate = startInput instanceof Date ? startInput : new Date(startInput);
+            const endDate = endInput ? (endInput instanceof Date ? endInput : new Date(endInput)) : null;
+
+            const hasValidStart = !Number.isNaN(startDate.getTime());
+            const hasValidEnd = endDate && !Number.isNaN(endDate.getTime());
+
+            const dateStr = hasValidStart
+                ? startDate.toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                : '';
+            const startText = hasValidStart
+                ? startDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+                : '';
+            const endText = hasValidEnd
+                ? endDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+                : '';
+            const timeText = startText ? (endText ? `${startText} - ${endText} น.` : `${startText} น.`) : '';
+
+            Swal.fire({
+                title: 'รายละเอียดการจอง',
+                html: `
+                    <div class="text-left space-y-2 text-slate-700 text-base">
+                        <p><span class="font-bold text-slate-900">📌 กิจกรรม:</span> ${escapeHtml(title || 'จองแล้ว')}</p>
+                        ${dateStr ? `<p><span class="font-bold text-slate-900">📅 วันที่:</span> ${escapeHtml(dateStr)}</p>` : ''}
+                        ${timeText ? `<p><span class="font-bold text-slate-900">⏰ เวลา:</span> ${escapeHtml(timeText)}</p>` : ''}
+                    </div>
+                `,
+                icon: 'info',
+                confirmButtonText: 'ปิด',
+                confirmButtonColor: '#2563eb',
+                customClass: {
+                    popup: 'rounded-2xl',
+                    title: 'font-Sarabun text-xl font-bold text-slate-800'
+                }
+            });
+        }
+
 // --- สร้างและตั้งค่าปฏิทิน FullCalendar ---
         const calendarEl = document.getElementById('calendar');
+        const sidebarList = document.getElementById('sidebarBookingList');
+
+        if (sidebarList) {
+            sidebarList.addEventListener('click', (e) => {
+                const card = e.target.closest('[data-booking-card]');
+                if (!card) return;
+                showBookingDetail(card.dataset.title, card.dataset.start, card.dataset.end);
+            });
+        }
         
         // ตรวจสอบขนาดหน้าจอ
         const isMobile = window.innerWidth < 768;
+        let wasMobile = isMobile;
 
 calendar = new FullCalendar.Calendar(calendarEl, {
             locale: 'th', 
@@ -443,14 +533,20 @@ calendar = new FullCalendar.Calendar(calendarEl, {
             headerToolbar: {
                 left: 'prev,next today',
                 center: 'title',
-                // 2. จัดเรียงปุ่มเมนูขวาบนใหม่ เอาสัปดาห์กับวันขึ้นก่อน
-                right: isMobile ? 'listMonth,timeGridDay' : 'timeGridWeek,timeGridDay,dayGridMonth'
+                // 2. จัดเรียงปุ่มเมนูขวาบนใหม่ เอาสัปดาห์กับวันขึ้นก่อน และเพิ่มปุ่มรายการ (listMonth)
+                right: isMobile ? 'listMonth,timeGridDay' : 'timeGridWeek,timeGridDay,dayGridMonth,listMonth'
             },
             buttonText: {
-                today: 'วันนี้', month: 'เดือน', week: 'สัปดาห์', day: 'วัน', list: 'รายการ'
+                today: 'วันนี้', month: 'เดือน', week: 'สัปดาห์', day: 'วัน', list: 'รายการ', listMonth: 'รายการ'
+            },
+            views: {
+                listMonth: { buttonText: 'รายการ' }
             },
             height: '100%',
             themeSystem: 'standard',
+            eventDisplay: 'block',
+            eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+            nowIndicator: true,
             
             // 3. เพิ่มการจำกัดเวลาให้ตรงกับคาบเรียน เพื่อให้ตารางดูง่าย ไม่ยาวเกินไป
             slotMinTime: '08:00:00', // เริ่มแสดงเวลา 08:00 น.
@@ -460,22 +556,27 @@ calendar = new FullCalendar.Calendar(calendarEl, {
             
             events: [], 
 
-            // เปลี่ยนหน้าตาอัตโนมัติเมื่อหมุนหน้าจอ
-            windowResize: function(arg) {
+            // เปลี่ยนหน้าตาอัตโนมัติเมื่อข้ามขนาดหน้าจอมือถือ/PC
+            windowResize: function() {
                 const isMobileNow = window.innerWidth < 768;
+                if (isMobileNow === wasMobile) return;
+                wasMobile = isMobileNow;
                 calendar.changeView(isMobileNow ? 'listMonth' : 'timeGridWeek');
                 calendar.setOption('headerToolbar', {
                     left: 'prev,next today',
                     center: 'title',
-                    right: isMobileNow ? 'listMonth,timeGridDay' : 'timeGridWeek,timeGridDay,dayGridMonth'
+                    right: isMobileNow ? 'listMonth,timeGridDay' : 'timeGridWeek,timeGridDay,dayGridMonth,listMonth'
                 });
             },
+
+            // คลิกวันหรือช่วงเวลาว่างบนปฏิทินเพื่อเปิดฟอร์มจองพร้อมล็อกวันที่
+            dateClick: function(info) {
+                openModal(info.dateStr.split('T')[0]);
+            },
             
-            // กดดูรายละเอียดคิวสีแดงที่ถูกจองไปแล้วได้ปกติ
+            // กดดูรายละเอียดคิวสีแดงที่ถูกจองไปแล้ว
             eventClick: function(info) {
-                const startText = info.event.start.toLocaleTimeString('th-TH', {hour: '2-digit', minute: '2-digit'});
-                const endText = info.event.end ? info.event.end.toLocaleTimeString('th-TH', {hour: '2-digit', minute: '2-digit'}) : '';
-                alert(`📌 ${info.event.title}\n⏰ เวลา: ${startText} - ${endText}`);
+                showBookingDetail(info.event.title, info.event.start, info.event.end);
             }
         });
         
@@ -507,7 +608,6 @@ const bookingsRef = ref(db, 'bookings');
             calendar.addEventSource(eventsArray);
 
             // 2. สร้างรายการจองในแถบเมนู (ส่วนซ้าย) ให้หน้าตาเหมือนมือถือ
-            const sidebarList = document.getElementById('sidebarBookingList');
             if (sidebarList) {
                 if (eventsArray.length === 0) {
                     sidebarList.innerHTML = '<p class="text-sm text-slate-500 text-center mt-10">ยังไม่มีรายการจอง</p>';
@@ -530,8 +630,8 @@ const bookingsRef = ref(db, 'bookings');
                         if (dateStr !== lastDateKey) {
                             htmlContent += `
                                 <div class="mt-4 mb-2 flex justify-between items-end border-b border-slate-200 pb-1">
-                                    <span class="font-bold text-slate-800 text-xs">${dateStr}</span>
-                                    <span class="text-xs text-slate-500 font-medium">${dayStr}</span>
+                                    <span class="font-bold text-slate-800 text-xs">${escapeHtml(dateStr)}</span>
+                                    <span class="text-xs text-slate-500 font-medium">${escapeHtml(dayStr)}</span>
                                 </div>
                             `;
                             lastDateKey = dateStr;
@@ -543,12 +643,12 @@ const bookingsRef = ref(db, 'bookings');
 
                         // สร้างการ์ดรายการ (กดคลิกเพื่อดูรายละเอียดได้ด้วย)
                         htmlContent += `
-                            <div class="bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:border-blue-300 hover:shadow-md transition-all mb-2 cursor-pointer group" onclick="alert('📌 ${event.title}\\n📅 วันที่: ${dateStr}\\n⏰ เวลา: ${startTime} - ${endTime}')">
+                            <div data-booking-card data-title="${escapeHtml(event.title)}" data-start="${escapeHtml(event.start)}" data-end="${escapeHtml(event.end || '')}" class="bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:border-blue-300 hover:shadow-md transition-all mb-2 cursor-pointer group">
                                 <div class="flex items-start gap-2">
                                     <div class="w-2 h-2 mt-1.5 rounded-full bg-red-500 shrink-0 group-hover:scale-125 transition-transform"></div>
                                     <div class="flex-1 overflow-hidden">
-                                        <p class="text-xs font-bold text-slate-700">${startTime} - ${endTime}</p>
-                                        <p class="text-xs text-slate-600 truncate mt-0.5">${event.title}</p>
+                                        <p class="text-xs font-bold text-slate-700">${escapeHtml(startTime)} - ${escapeHtml(endTime)}</p>
+                                        <p class="text-xs text-slate-600 truncate mt-0.5">${escapeHtml(event.title)}</p>
                                     </div>
                                 </div>
                             </div>
